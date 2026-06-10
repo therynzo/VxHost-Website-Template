@@ -1,0 +1,6 @@
+{
+  "name": "VxHost",
+  "description": "Premium High-Performance Hosting for Minecraft Servers, Cloud VPS, Discord Bots, and more. Featuring low-latency hardware, instant deployment, and dynamic pricing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
