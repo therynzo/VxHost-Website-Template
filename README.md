@@ -6,7 +6,7 @@
 
 This contains everything you need to run your app locally.
 
-View your app in AI Studio: https://preview.rynzo.eu.cc
+View The Official VxHost Website: https://preview.rynzo.eu.cc
 
 ## Run Locally
 
