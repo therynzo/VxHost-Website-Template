@@ -214,6 +214,7 @@ export default function Portal({
   const [ticketMessage, setTicketMessage] = useState('');
   const [chatReply, setChatReply] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmDeleteMemberEmail, setConfirmDeleteMemberEmail] = useState<string | null>(null);
 
   // User profile states
   const [profileUsername, setProfileUsername] = useState('');
@@ -371,17 +372,27 @@ export default function Portal({
     }
 
     // Standard client user logins
-    const userRole: User = {
-      username: usernameInput || emailInput.split('@')[0],
-      email: emailInput,
-      isAdmin: false
-    };
-    onLogin(userRole);
-
-    // Save/update standard user in dynamic registry to satisfy members view request
+    const trimmedEmail = emailInput.trim().toLowerCase();
     const savedMembersList = localStorage.getItem('vx_members_list');
     let membersListArray = savedMembersList ? JSON.parse(savedMembersList) : [];
-    if (!membersListArray.some((m: any) => m.email === userRole.email)) {
+
+    if (isRegister) {
+      // 1. REGISTRATION MODE
+      if (!usernameInput.trim()) {
+        setAuthError('Desired username is required to register.');
+        return;
+      }
+      if (membersListArray.some((m: any) => m.email.toLowerCase() === trimmedEmail)) {
+        setAuthError('This email is already registered. Please sign in instead.');
+        return;
+      }
+
+      const userRole: User = {
+        username: usernameInput.trim(),
+        email: trimmedEmail,
+        isAdmin: false
+      };
+
       const newMb = {
         username: userRole.username,
         email: userRole.email,
@@ -393,14 +404,40 @@ export default function Portal({
       membersListArray.push(newMb);
       localStorage.setItem('vx_members_list', JSON.stringify(membersListArray));
       setMembers(membersListArray);
+      onLogin(userRole);
+
     } else {
-      membersListArray = membersListArray.map((m: any) => 
-        m.email === userRole.email 
-          ? { ...m, lastActive: new Date().toISOString(), password: passwordInput || m.password || 'vxclient' }
-          : m
-      );
-      localStorage.setItem('vx_members_list', JSON.stringify(membersListArray));
-      setMembers(membersListArray);
+      // 2. SIGN IN MODE
+      const matchedUser = membersListArray.find((m: any) => m.email.toLowerCase() === trimmedEmail);
+
+      if (matchedUser) {
+        // Retrieve and check correct password
+        const expectedPassword = matchedUser.password || 'vxclient';
+        if (passwordInput !== expectedPassword) {
+          setAuthError('Incorrect password. Please verify your credentials or try registering.');
+          return;
+        }
+
+        // Logic matched! Update profile lastActive
+        membersListArray = membersListArray.map((m: any) => 
+          m.email.toLowerCase() === trimmedEmail 
+            ? { ...m, lastActive: new Date().toISOString() }
+            : m
+        );
+        localStorage.setItem('vx_members_list', JSON.stringify(membersListArray));
+        setMembers(membersListArray);
+
+        const userRole: User = {
+          username: matchedUser.username,
+          email: matchedUser.email,
+          isAdmin: false
+        };
+        onLogin(userRole);
+
+      } else {
+        // Email not registered yet, direct them to sign up
+        setAuthError('No account found matching this email. Please register or check for typos.');
+      }
     }
   };
 
@@ -1621,21 +1658,60 @@ export default function Portal({
                                   </span>
                                 </span>
                               </td>
-                              <td className="p-4 text-right space-x-2">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const updated = members.map((u, i) => i === idx ? { ...u, status: u.status === 'Active' ? 'Suspended' : 'Active' } : u);
-                                    setMembers(updated);
-                                    localStorage.setItem('vx_members_list', JSON.stringify(updated));
-                                    
-                                    setShowSaveNotification(true);
-                                    setTimeout(() => setShowSaveNotification(false), 3000);
-                                  }}
-                                  className="text-[10px] font-mono font-bold bg-white/5 hover:bg-white/10 text-zinc-300 px-2.5 py-1 rounded"
-                                >
-                                  {m.status === 'Active' ? 'Flag Suspended' : 'Unsuspend'}
-                                </button>
+                              <td className="p-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  {confirmDeleteMemberEmail === m.email ? (
+                                    <div className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 rounded-md p-1">
+                                      <span className="text-[10px] font-mono text-red-400 font-bold px-1.5 uppercase">CONFIRM?</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = members.filter((u) => u.email !== m.email);
+                                          setMembers(updated);
+                                          localStorage.setItem('vx_members_list', JSON.stringify(updated));
+                                          setConfirmDeleteMemberEmail(null);
+                                          
+                                          setShowSaveNotification(true);
+                                          setTimeout(() => setShowSaveNotification(false), 3000);
+                                        }}
+                                        className="text-[10px] font-mono font-bold bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded"
+                                      >
+                                        YES
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setConfirmDeleteMemberEmail(null)}
+                                        className="text-[10px] font-mono font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-1 rounded"
+                                      >
+                                        NO
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = members.map((u, i) => i === idx ? { ...u, status: u.status === 'Active' ? 'Suspended' : 'Active' } : u);
+                                          setMembers(updated);
+                                          localStorage.setItem('vx_members_list', JSON.stringify(updated));
+                                          
+                                          setShowSaveNotification(true);
+                                          setTimeout(() => setShowSaveNotification(false), 3000);
+                                        }}
+                                        className="text-[10px] font-mono font-bold bg-white/5 hover:bg-white/10 text-zinc-300 px-2.5 py-1 rounded transition-colors"
+                                      >
+                                        {m.status === 'Active' ? 'Flag Suspended' : 'Unsuspend'}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setConfirmDeleteMemberEmail(m.email)}
+                                        className="text-[10px] font-mono font-bold bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/30 text-red-400 px-2.5 py-1 rounded transition-colors"
+                                      >
+                                        Delete
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           ))}

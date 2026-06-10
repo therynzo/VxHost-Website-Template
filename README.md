@@ -1,35 +1,20 @@
 <div align="center">
-<img width="220" alt="VxLogo" src="https://cdn.discordapp.com/attachments/1409167460145434747/1514193012954239087/a587b42c797f6a86face45073eb13359.jpg?ex=6a2a79a2&is=6a292822&hm=536a1f4c854facf7da2f268e7d6dfcbbc96bd0b65029d879db495ff1effdbb2a&" />
+<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
 </div>
 
-**Run A Hosting Website Free**
+# Run and deploy your AI Studio app
 
 This contains everything you need to run your app locally.
 
-View The Official VxHost Website: https://preview.rynzo.eu.cc
+View your app in AI Studio: https://ai.studio/apps/526c5244-daac-4669-b02b-757509cff48c
 
 ## Run Locally
 
-**Requisites:** Node.js
+**Prerequisites:**  Node.js
+
 
 1. Install dependencies:
    `npm install`
-
-2. Set the `GEMINI_API_KEY` in `.env.local` to your Gemini API key
-
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
-
----
-
-## 📄 License
-
-This project is provided for educational and development purposes.
-
----
-
-<div align="center">
-
-###  Made By TheRynzo
-
-</div>

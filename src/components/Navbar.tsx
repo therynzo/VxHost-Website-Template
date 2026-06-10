@@ -6,8 +6,8 @@ import { CurrencyCode, CURRENCIES, User } from '../types';
 interface NavbarProps {
   currentCurrency: CurrencyCode;
   onCurrencyChange: (code: CurrencyCode) => void;
-  currentPage: 'home' | 'plans' | 'status' | 'reviews' | 'faq' | 'portal';
-  onPageChange: (page: 'home' | 'plans' | 'status' | 'reviews' | 'faq' | 'portal') => void;
+  currentPage: 'home' | 'plans' | 'status' | 'reviews' | 'faq' | 'portal' | 'support-ticket' | 'profile';
+  onPageChange: (page: 'home' | 'plans' | 'status' | 'reviews' | 'faq' | 'portal' | 'support-ticket' | 'profile') => void;
   siteName: string;
   siteLogo: string;
   themeColor: string;
@@ -118,7 +118,8 @@ export default function Navbar({
     { label: 'Hosting Plans', page: 'plans' as const },
     { label: 'Node Status', page: 'status' as const },
     { label: 'Reviews', page: 'reviews' as const },
-    { label: 'FAQ', page: 'faq' as const }
+    { label: 'FAQ', page: 'faq' as const },
+    ...(user ? [{ label: 'Profile', page: 'profile' as const }] : [])
   ];
 
   const halfBrandedName = () => {

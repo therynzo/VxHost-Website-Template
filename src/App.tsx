@@ -10,11 +10,12 @@ import FaqSection from './components/FaqSection';
 import Footer from './components/Footer';
 import Portal from './components/Portal';
 import SupportPage from './components/SupportPage';
+import ProfilePage from './components/ProfilePage';
 import { PLANS_DATA } from './plansData';
 import { Gamepad2, Cloud, MessageSquare, Globe, Cpu, Shield, Zap, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-type Page = 'home' | 'plans' | 'status' | 'reviews' | 'faq' | 'portal' | 'support-ticket';
+type Page = 'home' | 'plans' | 'status' | 'reviews' | 'faq' | 'portal' | 'support-ticket' | 'profile';
 
 const getAccentColor = (color: string) => {
   switch (color) {
@@ -447,6 +448,19 @@ export default function App() {
                   onLogin={handleLogin}
                   siteName={siteName}
                   themeColor={themeColor}
+                />
+              </div>
+            )}
+
+            {currentPage === 'profile' && (
+              <div className="pt-12">
+                <ProfilePage 
+                  user={user}
+                  onLogin={handleLogin}
+                  onLogout={handleLogout}
+                  siteName={siteName}
+                  themeColor={themeColor}
+                  onPageChange={(page) => handlePageChange(page)}
                 />
               </div>
             )}

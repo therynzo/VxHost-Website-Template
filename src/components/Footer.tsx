@@ -1,14 +1,16 @@
 import React from 'react';
 import { ArrowUpRight, ShieldCheck, Mail, MapPin } from 'lucide-react';
 import { motion } from 'motion/react';
+import { User } from '../types';
 
 interface FooterProps {
-  onPageChange?: (page: 'home' | 'plans' | 'status' | 'reviews' | 'faq' | 'portal' | 'support-ticket', category?: 'minecraft' | 'vps' | 'discord' | 'web') => void;
+  onPageChange?: (page: 'home' | 'plans' | 'status' | 'reviews' | 'faq' | 'portal' | 'support-ticket' | 'profile', category?: 'minecraft' | 'vps' | 'discord' | 'web') => void;
   siteName: string;
   siteLogo: string;
   contactEmail: string;
   contactAddress: string;
   themeColor: string;
+  user?: User | null;
 }
 
 const getAccentColor = (color: string) => {
@@ -68,7 +70,8 @@ export default function Footer({
   siteLogo,
   contactEmail,
   contactAddress,
-  themeColor
+  themeColor,
+  user
 }: FooterProps) {
   const currentYear = new Date().getFullYear();
   const colors = getAccentColor(themeColor);
@@ -192,6 +195,16 @@ export default function Footer({
                 Client Dashboard <ArrowUpRight className="h-3 w-3" />
               </button>
             </li>
+            {user && (
+              <li>
+                <button 
+                  onClick={() => onPageChange?.('profile')} 
+                  className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1 font-sans text-left outline-none"
+                >
+                  Manage Profile 👤
+                </button>
+              </li>
+            )}
             <li>
               <a href="https://control.vxhost.in" target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1 font-sans font-bold">
                 Game Control Panel <ArrowUpRight className="h-3 w-3" style={{ color: colors.starHex }} />
