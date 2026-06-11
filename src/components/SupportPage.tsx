@@ -528,7 +528,7 @@ export default function SupportPage({ user, onLogin, siteName, themeColor }: Sup
                       style={{ borderRightColor: !m.isAdmin ? colors.starHex : 'transparent' }}
                     >
                       <div className="flex justify-between text-[10px] font-mono text-zinc-500 mb-1">
-                        <span className="font-bold">{m.senderName} {m.isAdmin ? '👑 Support Team' : ''}</span>
+                        <span className="font-bold flex items-center gap-1.5">{m.senderName} {m.isAdmin ? <span className="text-[8px] bg-red-500/10 text-red-400 border border-red-500/20 px-1.5 py-0.5 rounded uppercase font-semibold">Support Team</span> : ''}</span>
                         <span>{new Date(m.timestamp).toLocaleTimeString()}</span>
                       </div>
                       <p className="whitespace-pre-line leading-relaxed">{m.message}</p>

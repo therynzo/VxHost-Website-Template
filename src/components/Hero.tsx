@@ -266,7 +266,7 @@ export default function Hero({ siteName, themeColor, onPageChange }: HeroProps) 
                           {latencyResult} ms
                         </p>
                         <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest leading-none mt-1">
-                          ⚡ BLAZING ULTRA LOW-LATENCY EDGE ⚡
+                          Blazing Ultra Low-Latency Edge
                         </p>
                       </div>
                     ) : (

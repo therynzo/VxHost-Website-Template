@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Lock, User as UserIcon, ShieldAlert, Laptop, Terminal, Play, Square, RefreshCw, 
-  Plus, Trash2, Edit3, Check, X, Clipboard, ArrowRight, MessageSquare, AlertCircle, HelpCircle
+  Plus, Trash2, Edit3, Check, X, Clipboard, ArrowRight, MessageSquare, AlertCircle, HelpCircle,
+  Key, ShieldCheck
 } from 'lucide-react';
 import { User, SupportTicket, TicketMessage, HostingPlan, HostCategory } from '../types';
 
@@ -30,6 +31,9 @@ interface PortalProps {
   setThemeColor: (color: string) => void;
   plans: HostingPlan[];
   setPlans: (plans: HostingPlan[]) => void;
+  isMaintenanceActive?: boolean;
+  setIsMaintenanceActive?: (active: boolean) => void;
+  setIsSiteUnlocked?: (unlocked: boolean) => void;
 }
 
 const getAccentColor = (color: string) => {
@@ -118,7 +122,10 @@ export default function Portal({
   themeColor,
   setThemeColor,
   plans,
-  setPlans
+  setPlans,
+  isMaintenanceActive,
+  setIsMaintenanceActive,
+  setIsSiteUnlocked
 }: PortalProps) {
   // Login states
   const [isRegister, setIsRegister] = useState(false);
@@ -129,7 +136,7 @@ export default function Portal({
 
   // Active view states
   const [activeTab, setActiveTab] = useState<'profile' | 'tickets'>('profile');
-  const [adminTab, setAdminTab] = useState<'site' | 'plans' | 'tickets' | 'members'>('site');
+  const [adminTab, setAdminTab] = useState<'site' | 'plans' | 'tickets' | 'members' | 'maintenance'>('site');
 
   // Local draft states for global settings - supports: anything changed shows a save option
   const [draftSiteName, setDraftSiteName] = useState(siteName);
@@ -145,6 +152,109 @@ export default function Portal({
 
   // Members lists
   const [members, setMembers] = useState<any[]>([]);
+
+  // Maintenance operations state
+  const [localMaintenanceActive, setLocalMaintenanceActive] = useState(() => localStorage.getItem('vx_maintenance_active') === 'true');
+  const [licenseKeys, setLicenseKeys] = useState<any[]>([]);
+  const [keyMaxUses, setKeyMaxUses] = useState<number>(5);
+  const [keyExpiryDate, setKeyExpiryDate] = useState<string>('2026-12-31');
+  const [keyGenSuccess, setKeyGenSuccess] = useState<string>('');
+  const [isCopied, setIsCopied] = useState<boolean>(false);
+
+  // Dual loading local/api to fast render and sync real state from backend
+  useEffect(() => {
+    // Fetch current maintenance active status
+    fetch('/api/maintenance')
+      .then(res => res.json())
+      .then(data => {
+        setLocalMaintenanceActive(data.active);
+        localStorage.setItem('vx_maintenance_active', data.active ? 'true' : 'false');
+        if (setIsMaintenanceActive) {
+          setIsMaintenanceActive(data.active);
+        }
+      })
+      .catch(err => console.error('Error fetching maintenance state on mount:', err));
+
+    // Fetch license keys database list from server
+    fetch('/api/licenses')
+      .then(res => res.json())
+      .then(data => {
+        setLicenseKeys(data);
+      })
+      .catch(err => console.error('Error fetching license files list:', err));
+  }, []);
+
+  const generateLicenseKey = (maxUsesInput: number, expiryDateInput: string) => {
+    fetch('/api/licenses/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ maxUses: maxUsesInput, expiryDate: expiryDateInput })
+    })
+      .then(res => res.json())
+      .then(newLicense => {
+        setLicenseKeys(prev => [newLicense, ...prev]);
+        setKeyGenSuccess(newLicense.key);
+        setTimeout(() => {
+          setKeyGenSuccess('');
+        }, 4500);
+      })
+      .catch(err => console.error('Error generating new license key:', err));
+  };
+
+  const toggleKeyStatus = (keyStr: string) => {
+    fetch('/api/licenses/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: keyStr })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setLicenseKeys(prev => prev.map(k => k.key === keyStr ? data.license : k));
+        }
+      })
+      .catch(err => console.error('Error toggling license status:', err));
+  };
+
+  const deleteKey = (keyStr: string) => {
+    fetch(`/api/licenses/${encodeURIComponent(keyStr)}`, {
+      method: 'DELETE'
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setLicenseKeys(prev => prev.filter(k => k.key !== keyStr));
+        }
+      })
+      .catch(err => console.error('Error deleting license content:', err));
+  };
+
+  const toggleMaintenance = () => {
+    const nextVal = !localMaintenanceActive;
+    
+    fetch('/api/maintenance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: nextVal })
+    })
+      .then(res => res.json())
+      .then(data => {
+        setLocalMaintenanceActive(data.active);
+        localStorage.setItem('vx_maintenance_active', data.active ? 'true' : 'false');
+        
+        if (data.active) {
+          localStorage.setItem('vx_site_unlocked', 'false');
+          if (setIsSiteUnlocked) {
+            setIsSiteUnlocked(false);
+          }
+        }
+        
+        if (setIsMaintenanceActive) {
+          setIsMaintenanceActive(data.active);
+        }
+      })
+      .catch(err => console.error('Error toggling system maintenance active:', err));
+  };
 
   // Update drafts when props change under-the-hood
   useEffect(() => {
@@ -672,12 +782,12 @@ export default function Portal({
     setDeploymentProgress(5);
 
     const logs = [
-      '⚡ Initializing Node socket handshakes...',
-      '🛠️ Setting up virtualization container slice...',
-      '🔥 Binding public IPv4 block allocation...',
-      '📂 Extracting default core panel files...',
-      '🛰️ Linking edge network telemetry logs...',
-      '🎉 Deployment fully finished!'
+      'Initializing Node socket handshakes...',
+      'Setting up virtualization container slice...',
+      'Binding public IPv4 block allocation...',
+      'Extracting default core panel files...',
+      'Linking edge network telemetry logs...',
+      'Deployment fully finished!'
     ];
 
     let count = 0;
@@ -891,7 +1001,7 @@ export default function Portal({
                   onClick={onLogout}
                   className="rounded-full border border-white/10 bg-white/5 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
                 >
-                  🔒 Admin Sign Out
+                  Admin Sign Out
                 </button>
               </div>
             </div>
@@ -904,7 +1014,7 @@ export default function Portal({
                   adminTab === 'site' ? `${colors.bg} text-black font-extrabold` : 'text-zinc-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                🌐 Global Site Settings
+                Global Site Settings
               </button>
               <button
                 onClick={() => setAdminTab('plans')}
@@ -912,7 +1022,7 @@ export default function Portal({
                   adminTab === 'plans' ? `${colors.bg} text-black font-extrabold` : 'text-zinc-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                📋 Plan Catalog Customizer
+                Plan Catalog Customizer
               </button>
               <button
                 onClick={() => setAdminTab('tickets')}
@@ -920,7 +1030,7 @@ export default function Portal({
                   adminTab === 'tickets' ? `${colors.bg} text-black font-extrabold` : 'text-zinc-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                ✉️ Ticket Area ({tickets.filter(t => t.status === 'open').length})
+                Ticket Area ({tickets.filter(t => t.status === 'open').length})
               </button>
               <button
                 onClick={() => setAdminTab('members')}
@@ -928,7 +1038,15 @@ export default function Portal({
                   adminTab === 'members' ? `${colors.bg} text-black font-extrabold` : 'text-zinc-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                👥 Registered Members ({members.length + 1})
+                Registered Members ({members.length + 1})
+              </button>
+              <button
+                onClick={() => setAdminTab('maintenance')}
+                className={`hover:scale-105 active:scale-95 duration-200 transition-all px-5 py-2.5 text-xs font-bold uppercase tracking-widest rounded-xl cursor-pointer outline-none ${
+                  adminTab === 'maintenance' ? `${colors.bg} text-black font-extrabold shadow-sm` : 'text-zinc-400 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                Maintenance Locks
               </button>
             </div>
 
@@ -1509,7 +1627,7 @@ export default function Portal({
                               style={{ borderLeftColor: m.isAdmin ? colors.accentHex : 'transparent' }}
                             >
                               <div className="flex justify-between text-[10px] font-mono text-zinc-500 mb-1">
-                                <span className="font-bold">{m.senderName} {m.isAdmin ? '👑 (Staff)' : ''}</span>
+                                <span className="font-bold flex items-center gap-1.5">{m.senderName} {m.isAdmin ? <span className="text-[8px] bg-white/10 px-1.5 py-0.5 rounded uppercase font-semibold text-zinc-300">Staff</span> : ''}</span>
                                 <span>{new Date(m.timestamp).toLocaleTimeString()}</span>
                               </div>
                               <p className="whitespace-pre-line leading-relaxed">{m.message}</p>
@@ -1719,6 +1837,230 @@ export default function Portal({
                       </table>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* SUB TAB E: Maintenance Mode Panel */}
+              {adminTab === 'maintenance' && (
+                <div className="space-y-8 animate-fadeIn">
+                  
+                  {/* Header text */}
+                  <div className="border-b border-white/5 pb-4">
+                    <h3 className="font-display text-white font-black text-xs uppercase tracking-widest">
+                      Website Lock & Maintenance Area
+                    </h3>
+                    <p className="text-zinc-500 text-[11px] mt-0.5">
+                      Toggle active site-wide maintenance lockdown. When locks are active, only authorized license holders and administrators bypass controls.
+                    </p>
+                  </div>
+
+                  {/* Main status indicator card */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    
+                    {/* Left status panel card with Hover Grow */}
+                    <div className="md:col-span-5 bg-white/[0.01] border border-white/7 rounded-3xl p-6 flex flex-col justify-between relative overflow-hidden group hover:scale-[1.02] duration-300 transition-all shadow-lg hover:border-white/15">
+                      <div 
+                        className="absolute top-0 left-0 right-0 h-[4px]" 
+                        style={{ backgroundColor: localMaintenanceActive ? '#ef4444' : colors.accentHex }} 
+                      />
+                      
+                      <div className="space-y-4">
+                        <span className="font-mono text-[9px] text-zinc-500 font-bold uppercase tracking-widest">
+                          LOCK STATUS SECTOR
+                        </span>
+                        
+                        <div className="flex items-center gap-3">
+                          <div className={`h-3 w-3 rounded-full ${localMaintenanceActive ? 'bg-red-500 animate-pulse' : 'bg-emerald-400'}`} />
+                          <span className="font-display font-black text-xl text-white uppercase tracking-tight">
+                            {localMaintenanceActive ? 'ACTIVE LOCKDOWN' : 'PUBLIC ONLINE'}
+                          </span>
+                        </div>
+
+                        <p className="text-zinc-400 text-xs font-sans leading-relaxed">
+                          {localMaintenanceActive 
+                            ? 'The website is currently locked down for standard users. Visitors see the dedicated Maintenance Bypass Page and must supply a valid license key or sign in as an admin.'
+                            : 'The website is operating normally. All services, plan selectors, custom pricing engines, and client databases are fully accessible.'
+                          }
+                        </p>
+                      </div>
+
+                      <div className="pt-6">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            toggleMaintenance();
+                            setShowSaveNotification(true);
+                            setTimeout(() => setShowSaveNotification(false), 3000);
+                          }}
+                          className={`w-full py-3.5 px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all hover:scale-105 active:scale-95 duration-200 cursor-pointer shadow-md ${
+                            localMaintenanceActive 
+                              ? 'bg-emerald-500 text-black hover:bg-emerald-400' 
+                              : 'bg-red-500 text-white hover:bg-red-400'
+                          }`}
+                        >
+                          {localMaintenanceActive ? 'END LOCKDOWN (GO LIVE)' : 'TRIGGER LOCKDOWN'}
+                        </button>
+                      </div>
+
+                    </div>
+
+                    {/* Right Key Generator with Hover Grow */}
+                    <div className="md:col-span-7 bg-white/[0.01] border border-white/7 rounded-3xl p-6 relative overflow-hidden group hover:scale-[1.02] duration-300 transition-all shadow-lg hover:border-white/15">
+                      <div className="absolute top-0 left-0 right-0 h-[4px]" style={{ backgroundColor: colors.accentHex }} />
+                      
+                      <div className="space-y-4">
+                        <span className="font-mono text-[9px] text-zinc-500 font-bold uppercase tracking-widest">
+                          LICENSE KEY MATRIX
+                        </span>
+                        
+                        <h4 className="font-display font-black text-base text-white uppercase tracking-wider">
+                          GENERATE ACCESS TOKEN
+                        </h4>
+                        
+                        <p className="text-zinc-400 text-xs font-sans leading-relaxed">
+                          Create randomized cryptographic license keys that users can enter to look up and unlock website operational menus during locking routines.
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="block text-[9px] font-mono text-zinc-400 font-bold uppercase tracking-wider">
+                              Maximum User Uses
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={9999}
+                              value={keyMaxUses}
+                              onChange={(e) => setKeyMaxUses(parseInt(e.target.value) || 1)}
+                              className="w-full rounded-xl border border-white/10 bg-black/60 px-4 py-2.5 text-xs text-white focus:outline-none"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="block text-[9px] font-mono text-zinc-400 font-bold uppercase tracking-wider">
+                              Key Expiry Date
+                            </label>
+                            <input
+                              type="date"
+                              value={keyExpiryDate}
+                              onChange={(e) => setKeyExpiryDate(e.target.value)}
+                              className="w-full rounded-xl border border-white/10 bg-black/60 px-4 py-2.5 text-xs text-zinc-300 font-mono focus:outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        {keyGenSuccess && (
+                          <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl flex items-center justify-between gap-2 text-xs font-mono text-emerald-400 animate-pulse">
+                            <span>Generated: <strong className="font-bold underline">{keyGenSuccess}</strong></span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(keyGenSuccess);
+                                setIsCopied(true);
+                                setTimeout(() => setIsCopied(false), 2000);
+                              }}
+                              className="text-[9px] uppercase font-bold bg-emerald-500/20 px-2.5 py-1 rounded hover:bg-emerald-500/30 text-white min-w-[70px] text-center transition-all cursor-pointer"
+                            >
+                              {isCopied ? 'Copied' : 'Copy Key'}
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={() => generateLicenseKey(keyMaxUses, keyExpiryDate)}
+                            className="w-full py-3 px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all hover:scale-[1.03] active:scale-95 duration-200 cursor-pointer text-black"
+                            style={{ backgroundColor: colors.accentHex }}
+                          >
+                            Generate Random License Key
+                          </button>
+                        </div>
+
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Active Licenses Table list with Hover Grow rows */}
+                  <div className="bg-black/40 border border-white/5 rounded-2xl overflow-hidden mt-6 shadow-xl">
+                    <div className="p-4 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
+                      <span className="font-mono text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                        AUTHORIZED LOCK ENTRANCE REGISTRY ({licenseKeys.length})
+                      </span>
+                    </div>
+
+                    <div className="overflow-x-auto text-xs">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-white/5 bg-white/[0.01] text-zinc-500 font-mono uppercase text-[9px] tracking-wider">
+                            <th className="p-4 font-bold">Token code value</th>
+                            <th className="p-4 font-bold">Created timestamp</th>
+                            <th className="p-4 font-bold">Expiry Date stamp</th>
+                            <th className="p-4 font-bold">Usage counter</th>
+                            <th className="p-4 font-bold">License Status</th>
+                            <th className="p-4 font-bold text-right">Emergency Controls</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {licenseKeys.map((keyObj, idx) => {
+                            const isExpired = new Date(keyObj.expiryDate) < new Date();
+                            return (
+                              <tr key={idx} className="hover:bg-white/[0.02] transition-colors group">
+                                <td className="p-4 font-mono font-black text-white flex items-center gap-2 group-hover:scale-[1.01] transition-transform duration-100">
+                                  <Key className="h-3 w-3" style={{ color: colors.accentHex }} />
+                                  <span>{keyObj.key}</span>
+                                </td>
+                                <td className="p-4 font-mono text-zinc-500">{keyObj.createdAt.substring(0,10)}</td>
+                                <td className="p-4 font-mono">
+                                  <span className={isExpired ? 'text-red-400 font-bold animate-pulse' : 'text-zinc-300'}>
+                                    {keyObj.expiryDate} {isExpired && '[EXPIRED]'}
+                                  </span>
+                                </td>
+                                <td className="p-4 font-mono font-bold">
+                                  <span className="text-zinc-200">{keyObj.uses}</span>
+                                  <span className="text-zinc-500"> / {keyObj.maxUses}</span>
+                                </td>
+                                <td className="p-4">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                                    keyObj.status === 'Active' && !isExpired
+                                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                      : 'bg-red-500/10 text-red-500 border-red-500/20'
+                                  }`}>
+                                    {keyObj.status === 'Active' && !isExpired ? 'ACTIVE' : 'LOCKED / EXPIRED'}
+                                  </span>
+                                </td>
+                                <td className="p-4 text-right space-x-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleKeyStatus(keyObj.key)}
+                                    className="text-[10px] font-mono font-bold bg-white/5 hover:bg-white/10 text-zinc-200 px-2.5 py-1 rounded transition-all hover:scale-105 active:scale-95 duration-100"
+                                  >
+                                    {keyObj.status === 'Active' ? 'Disable Key' : 'Activate Key'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteKey(keyObj.key)}
+                                    className="text-[10px] font-mono font-bold bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 px-2.5 py-1 rounded transition-all hover:scale-105 active:scale-95 duration-100"
+                                  >
+                                    Delete Key
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {licenseKeys.length === 0 && (
+                            <tr>
+                              <td colSpan={6} className="p-8 text-center text-zinc-500 font-mono text-xs">
+                                No cryptographic access keys generated yet. Click generate above to register first.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
                 </div>
               )}
 
@@ -2185,7 +2527,7 @@ export default function Portal({
                             style={{ borderRightColor: !m.isAdmin ? colors.accentHex : 'transparent' }}
                           >
                             <div className="flex justify-between text-[10px] font-mono text-zinc-500 mb-1">
-                              <span className="font-bold">{m.senderName} {m.isAdmin ? '👑 Support Team' : ''}</span>
+                              <span className="font-bold flex items-center gap-1.5">{m.senderName} {m.isAdmin ? <span className="text-[8px] bg-red-500/10 text-red-400 border border-red-500/20 px-1.5 py-0.5 rounded uppercase font-semibold">Support Team</span> : ''}</span>
                               <span>{new Date(m.timestamp).toLocaleTimeString()}</span>
                             </div>
                             <p className="whitespace-pre-line leading-relaxed">{m.message}</p>

@@ -243,10 +243,10 @@ export default function NodeStats({ themeColor, onPageChange }: NodeStatsProps) 
                   
                   <p className="text-zinc-500 font-bold mt-3"># cat telemetry_capacity.json</p>
                   <div className="bg-black/40 p-2.5 rounded border border-white/5 leading-normal text-zinc-300">
-                    <div>⚡ Transit: Level3/AATA</div>
-                    <div>📀 Disk Array: 100% NVMe Gen4</div>
-                    <div>🛡️ DDoS Capacity: 15 Terabits</div>
-                    <div>🚀 Speed SLA: &lt;15ms edge ping</div>
+                    <div>Transit: Level3/AATA</div>
+                    <div>Disk Array: 100% NVMe Gen4</div>
+                    <div>DDoS Capacity: 15 Terabits</div>
+                    <div>Speed SLA: &lt;15ms edge ping</div>
                   </div>
                 </div>
               </div>
