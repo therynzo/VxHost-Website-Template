@@ -8,6 +8,8 @@ This contains everything you need to run your app locally.
 
 View a Preview Website: https://preview.rynzo.eu.cc
 
+Also Have a admin Dashboard to Fully Customize The Full Website Need Admin Account Details Discord Dm me Username: **TheRynzo**
+
 ## Run Locally
 
 **Requisites:** Node.js
